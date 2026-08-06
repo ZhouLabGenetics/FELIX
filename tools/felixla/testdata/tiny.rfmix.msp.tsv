@@ -1,0 +1,5 @@
+#Subpopulation order/codes: ANC0=0	ANC1=1
+#chm	spos	epos	sgpos	egpos	n snps	s1.0	s1.1	s2.0	s2.1
+1	1	100	0.0	0.0	2	0	1	1	0
+1	100	250	0.0	0.0	3	0	1	1	0
+2	1	150	0.0	0.0	3	1	1	0	0

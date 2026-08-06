@@ -1,0 +1,10 @@
+##fileformat=VCFv4.2
+##contig=<ID=chr1>
+##FORMAT=<ID=DS1,Number=1,Type=Float,Description="Dosage of ANC1">
+##FORMAT=<ID=DS2,Number=1,Type=Float,Description="Dosage of ANC2">
+##FORMAT=<ID=ANC1,Number=1,Type=Float,Description="Ancestry count 1">
+##FORMAT=<ID=ANC2,Number=1,Type=Float,Description="Ancestry count 2">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	s1	s2
+chr1	100	v1	A	G	.	PASS	.	DS1:DS2:ANC1:ANC2	1:0:2:0	0:1:1:1
+chr1	160	v2	C	T	.	PASS	.	DS1:DS2:ANC1:ANC2	2:0:2:0	1:0:1:1
+chr1	220	v3	G	A	.	PASS	.	DS1:DS2:ANC1:ANC2	0:1:0:2	1:0:2:0

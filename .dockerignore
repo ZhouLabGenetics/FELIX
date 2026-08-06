@@ -1,0 +1,21 @@
+.git
+**/.DS_Store
+*.sif
+plink-ng/
+# The local pixi environment (2+ GB) must never enter the build context; the
+# image builds its own. pixi.lock IS copied so the image resolves to exactly
+# the same package set as a source install.
+.pixi
+tutorial/output
+tutorial/packed
+tutorial/example_inputs/*.vcf.gz
+tutorial/example_inputs/*.vcf.gz.tbi
+tools/felixla/bin
+tools/felixla/bin-static
+tools/felixla/build
+tools/felixla/example
+# The image compiles felixla itself; the prebuilt copies are for source
+# installs only.
+tools/felixla/prebuilt
+src/*.o
+src/*.so

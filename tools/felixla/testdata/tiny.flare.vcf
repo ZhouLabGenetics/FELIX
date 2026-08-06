@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##contig=<ID=chr1>
+##contig=<ID=chr2>
+##FORMAT=<ID=AN1,Number=1,Type=Integer,Description="First haplotype local ancestry">
+##FORMAT=<ID=AN2,Number=1,Type=Integer,Description="Second haplotype local ancestry">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	s1	s2
+chr1	100	.	A	C	.	PASS	.	AN1:AN2	0:1	1:0
+chr1	200	.	A	C	.	PASS	.	AN1:AN2	0:1	1:0
+chr2	100	.	A	C	.	PASS	.	AN1:AN2	1:1	0:0

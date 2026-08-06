@@ -1,0 +1,91 @@
+[workspace]
+channels = ["conda-forge", "bioconda"]
+name = "FELIX"
+platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64"]
+version = "0.1.0"
+
+# ---------------------------------------------------------------------------
+# Tasks
+#
+#   pixi run setup      build + install FELIX into this pixi environment
+#   pixi run test       run the tutorial example end to end (implies setup)
+#   pixi shell          drop into a shell with felix/step1/step2 on PATH
+#
+# Everything is installed into .pixi/envs/default inside this checkout, so
+# `pixi clean` / deleting .pixi/ fully uninstalls FELIX.
+# ---------------------------------------------------------------------------
+[activation.env]
+# Keep the environment hermetic: without this, R would also load packages from
+# the user's personal library (~/R/<arch>/<ver>), which is built against a
+# different R/toolchain and silently shadows the pinned conda builds.
+R_LIBS_USER = "$CONDA_PREFIX/lib/R/library"
+# Ignore any ~/.R/Makevars the user may have for their system R.
+R_MAKEVARS_USER = "$PIXI_PROJECT_ROOT/tools/Makevars.pixi"
+# Step 2 is single-threaded by design; extra BLAS threads only add contention.
+OMP_NUM_THREADS = "1"
+
+[tasks]
+# Install the FELIXla command (prebuilt if one matches, else compiled).
+install-felixla = { cmd = "bash tools/felixla/install_felixla.sh" }
+
+# Install the FELIX R package (FELIXla reader + FELIXassoc tests) and the
+# step1/step2/step3/createSparseGRM command-line wrappers.
+# (Both install scripts are no-ops when the environment is already up to
+# date, so `pixi run test` does not pay for a rebuild every time. Force one
+# with FELIX_FORCE=1.)
+install-felix = { cmd = "bash tools/install_felix.sh" }
+
+# Full source install.
+setup = { depends-on = ["install-felixla", "install-felix"] }
+
+# Verify the install: every command present, runnable, and the R package loads.
+check = { cmd = "bash tools/check_install.sh", depends-on = ["setup"] }
+
+# Run the complete tutorial example against the source install (no Docker).
+test = { cmd = "bash run_example.sh", cwd = "tutorial", depends-on = ["setup"] }
+
+[dependencies]
+# --- build toolchain (needed to compile the R package + FELIXla) ------------
+c-compiler = "*"
+cxx-compiler = "*"
+fortran-compiler = "*"
+make = "*"
+pkg-config = "*"
+cget = "*"
+
+# --- FELIXla / VCF handling (provides libhts, bgzip and tabix) --------------
+htslib = "*"
+
+# --- numerical / IO libraries linked by the FELIX R package -----------------
+boost-cpp = "*"
+openblas = "*"
+liblapack = "*"
+savvy = "*"
+superlu = "*"
+zlib = "*"
+zstd = "*"
+
+# --- R and the R packages FELIX depends on ----------------------------------
+r = "*"
+r-bh = "*"
+r-cpp11 = "*"
+r-devtools = "*"
+r-rcpparmadillo = "*"
+r-rcppeigen = "*"
+r-rcppparallel = "*"
+"r-data.table" = "*"
+r-dplyr = "*"
+r-mass = "*"
+r-matrix = "*"
+r-metaskat = "*"
+r-optparse = "*"
+r-qlcmatrix = "*"
+r-rhpcblasctl = "*"
+r-rsqlite = "*"
+r-skat = "*"
+r-spatest = "*"
+r-rcppnumerical = "*"
+
+# --- tutorial/simulate_example.py, and the FELIXla test suite ---------------
+python = "*"
+numpy = "*"

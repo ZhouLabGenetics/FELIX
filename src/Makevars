@@ -1,0 +1,54 @@
+PKG_CPPFLAGS = -D SQLITE_ENABLE_COLUMN_METADATA -fpic -w -pedantic -DARMA_64BIT_WORD=1 -D__STDC_FORMAT_MACROS
+
+CXX_STD = CXX14
+
+# R bakes the gfortran runtime directory of the toolchain *R itself* was built
+# with into FLIBS. In a conda/pixi environment the installed gfortran is often
+# a different patch release, so that -L points at a directory that does not
+# exist and the link fails on -lheapt_w / -lgfortran. Search whichever gfortran
+# runtime is actually installed first; the stale -L inside FLIBS then only
+# produces a harmless linker warning.
+GFORTRAN_LIBDIR := $(dir $(firstword $(wildcard $(CONDA_PREFIX)/lib/gcc/*/*/libheapt_w.a $(CONDA_PREFIX)/lib/gcc/*/*/libgfortran.a)))
+ifneq ($(GFORTRAN_LIBDIR),)
+FLIBS_FIX := -L$(GFORTRAN_LIBDIR)
+endif
+
+PKG_LIBS = $(ZLIB_LIB) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS_FIX) $(FLIBS) -lsuperlu -lzstd -llapack
+
+# Headers/libraries of the active conda/pixi environment. `pixi run` exports
+# CONDA_PREFIX; fall back to the in-checkout environment so that a bare
+# `R CMD INSTALL .` from the repository root still works.
+ifneq ($(CONDA_PREFIX),)
+PKG_CPPFLAGS += -I$(CONDA_PREFIX)/include
+PKG_LIBS += -L$(CONDA_PREFIX)/lib
+else
+PKG_CPPFLAGS += -I../.pixi/envs/default/include
+endif
+
+# RcppParallel is header-only against TBB. Linux resolves the TBB symbols
+# lazily at load time, but macOS's two-level namespace requires them to be
+# bound here. (RcppParallel::RcppParallelLibs() cannot be used: the conda build
+# records an unusable build-time placeholder path.)
+TBB_LIB := $(firstword $(wildcard $(CONDA_PREFIX)/lib/libtbb.dylib $(CONDA_PREFIX)/lib/libtbb.so))
+ifneq ($(TBB_LIB),)
+PKG_LIBS += -ltbb -ltbbmalloc
+endif
+
+# plink-ng's pgen headers/archive are linked only when they are actually
+# present (the Docker image builds them). A pixi source install does not need
+# them, and `-l:` is a GNU-ld extension the macOS linker rejects.
+UNAME_S := $(shell uname -s)
+PLINK2_ARCHIVE := $(firstword $(wildcard ../plink2_includes.a $(CONDA_PREFIX)/lib/plink2_includes.a))
+ifneq ($(UNAME_S),Darwin)
+ifneq ($(PLINK2_ARCHIVE),)
+PKG_CPPFLAGS += -I../plink-ng/2.0/include
+PKG_LIBS += -L.. -l:plink2_includes.a
+endif
+endif
+
+
+#OBJECTS = RcppExports.o SAIGE_fitGLMM_fast.o getMem.o VCF.o BGEN.o PLINK.o SAIGE_test.o SPA_binary.o SPA.o SPA_survival.o UTIL.o Main.o test.o CCT.o 
+OBJECTS = RcppExports.o SAIGE_fitGLMM_fast.o getMem.o VCF.o BGEN.o PLINK.o SAIGE_test.o SPA_binary.o SPA.o SPA_survival.o UTIL.o Main.o test.o CCT.o Binary_HyperGeo.o Binary_ComputeExact.o Binary_global.o Binary_ComputeExactSKATO.o Binary_resampling.o Binary_Permu_SKAT.o ER_binary_func.o LDmat.o qfc.o SKAT_funcs.o Duplicate_vec.o TractorHybrid.o
+
+all: $(SHLIB)
+$(SHLIB): ${OBJECTS} Makevars

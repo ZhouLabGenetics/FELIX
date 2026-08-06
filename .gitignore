@@ -1,0 +1,37 @@
+/archived
+thirdParty/cget
+thirdParty/zlib-1.2.8
+thirdParty/bgen/.lock-waf_linux2_build
+thirdParty/bgen/build
+thirdParty/bgen/.hg
+thirdParty/
+src/*.o
+src/*.so
+src/backup/*
+extdata/input/nfam_100_nindep_0_step1_includeMoreRareVariants_poly.raw
+
+# Generated artefacts from the legacy upstream-SAIGE example scripts (~50 MB of
+# sparse GRMs, null-model .rda files and test outputs). Not used by FELIX or by
+# tutorial/; the extdata/cmd*.sh examples regenerate what they need via
+# createSparseGRM.R / step1_fitNULLGLMM.R.
+extdata/output/
+*.swp
+plink-ng/
+
+# pixi: the environment itself is local, but pixi.lock IS committed so that
+# `pixi install` reproduces the exact same package set on every machine.
+.pixi/
+
+# local editor / assistant settings
+.claude/settings.local.json
+.vscode/
+.idea/
+
+tools/felixla/bin/
+tools/felixla/bin-static/
+tools/felixla/build/
+tools/felixla/example/
+tutorial/output/
+tutorial/packed/
+tutorial/example_inputs/*.vcf.gz
+tutorial/example_inputs/*.vcf.gz.tbi

@@ -1,0 +1,6 @@
+# Intentionally empty.
+#
+# pixi.toml points R_MAKEVARS_USER at this file so that a personal
+# ~/.R/Makevars (paths to a Homebrew libomp, another project's thirdParty
+# tree, ...) cannot leak into the FELIX build inside the pixi environment.
+# Everything FELIX needs comes from .pixi/envs/default and src/Makevars.
