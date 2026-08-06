@@ -1,11 +1,11 @@
 # FELIX
 
 **FELIX** (Full-cohort Efficient Local ancestry-Integrated miXed-model
-framework) is a scalable, local-ancestry-aware GWAS framework for admixed
-cohorts. It has two components:
+framework) is a scalable, local-ancestry-aware GWAS framework for biobank cohorts. 
+It has two components:
 
 - **FELIXla** — a compact, streamable storage format that packs phased
-  genotypes with per-haplotype local-ancestry calls, giving single-pass access
+  genotypes with per-haplotype local-ancestry calls, giving efficient access
   to ancestry-specific dosages at biobank scale.
 - **FELIXassoc** — the association module. From one null mixed-model fit it
   tests, at every variant, both a shared-effect (homogeneous) and an
