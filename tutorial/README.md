@@ -273,46 +273,6 @@ rm -rf FELIX/          # removes FELIX and its entire environment
 rm -rf ~/.pixi         # optional: removes pixi itself
 ```
 
-> **A note on numerical reproducibility.** Results are close but not
-> bit-identical across machines, with either install method.
->
-> - **Packing is exact.** `--flare-vcf` and `--rfmix-msp` produce identical
->   genotype, carrier and ancestry-mask payloads (only the ancestry-block
->   *coordinates* differ, since RFMix reports window edges and FLARE reports
->   variant positions). Given the same Step 1 model, Step 2 output is
->   bit-identical between the two — verified on Linux, macOS and in Docker.
-> - **Step 2 is deterministic** for a given packed input and Step 1 model.
-> - **Step 1 has two solutions on this dataset.** Its variance ratio comes from
->   a stochastic trace estimator evaluated in single precision. It is seeded and
->   *deterministic within a given setup* — repeated runs in the same directory
->   with the same command reproduce exactly — but it settles on one of two
->   values about 0.2% apart depending on the run context (we have seen the
->   working directory, the `--outputPrefix` path and `--nThreads` all flip it):
->
->   | | variance ratio | `p.value_anc1` | `P_cct_admixed` |
->   |---|---|---|---|
->   | A | `0.6450931` | 4.512061e-13 | 5.886116e-12 |
->   | B | `0.6433636` | 4.846673e-13 | 6.342835e-12 |
->
->   Same ranking, same conclusions, ~7% apart on the smallest p-value. This is
->   pre-existing SAIGE behaviour, not specific to FELIX. The tutorial uses
->   `--nThreads=1`, the most stable setting we found.
->
->   In real analyses this is a non-issue: you fit Step 1 **once** and reuse the
->   `.rda` and `.varianceRatio.txt` across chromosomes and reruns. Step 2 on a
->   fixed Step 1 model is fully deterministic.
-> - **Across machines**, OpenBLAS also selects CPU-specific kernels, which can
->   shift the last digits further. Running the commands on this page verbatim,
->   we measured `P_cct_admixed` for the causal variant as 5.89e-12 (Docker
->   linux/amd64, the committed reference), 5.82e-12 (Docker linux/arm64) and
->   6.34e-12 (pixi source install, both `linux-64` and `osx-arm64`) — a ~9%
->   spread, with `v31_G_A` the top hit and every other variant above 10⁻³ in
->   all four.
->
-> In all combinations we tested, effect sizes agreed to 3+ significant digits
-> and the variant ranking was unchanged. None of this affects which variants
-> are significant.
-
 ---
 
 ### 2C. Which prefix do I put in front of the commands?
