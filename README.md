@@ -76,7 +76,8 @@ full walkthrough, including what to do if you have never used pixi.
 ## Quick start
 
 ```bash
-cd tutorial
+git clone https://github.com/ZhouLabGenetics/FELIX.git # if you have already downloaded it from pixi installation, no need to re-download
+cd FELIX/tutorial/
 python3 simulate_example.py     # make a tiny simulated admixed cohort
 bash run_example.sh             # FELIXla pack -> Step 1 -> Step 2
 ```
