@@ -89,13 +89,6 @@ build on `linux/amd64` (servers, HPC, Intel Macs) and on `linux/arm64`
 docker pull lhu1/felix:latest
 ```
 
-Test the install:
-
-```bash
-docker run --rm lhu1/felix:latest \
-    Rscript -e 'library(SAIGE); cat("FELIX (SAIGE core) version:", as.character(packageVersion("SAIGE")), "\n")'
-```
-
 To run any command in the container against your current directory, prefix it with:
 
 ```bash
