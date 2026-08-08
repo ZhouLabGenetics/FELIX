@@ -73,19 +73,46 @@ from source automatically. See the
 [tutorial's installation section](tutorial/README.md#2-installation) for the
 full walkthrough, including what to do if you have never used pixi.
 
-## Quick start (if you're using docker)
+## Quick start
+
+Clone the repository once, then use the block for your installation method.
 
 ```bash
-git clone https://github.com/ZhouLabGenetics/FELIX.git # if you have already downloaded it from pixi installation, no need to re-download
-cd FELIX/tutorial/
-python3 simulate_example.py     # make a tiny simulated admixed cohort
-bash run_example.sh             # FELIXla pack -> Step 1 -> Step 2
+git clone https://github.com/ZhouLabGenetics/FELIX.git
+cd FELIX
 ```
 
-`run_example.sh` uses the **Docker image** by default, and the source install
-automatically when the FELIX commands are already on `PATH` (i.e. inside
-`pixi shell`). From the repository root, `pixi run test` runs the same example
-against the source install.
+### Docker (Linux or macOS)
+
+```bash
+docker pull lhu1/felix:latest
+cd tutorial
+bash run_example.sh             # simulate -> FELIXla pack -> Step 1 -> Step 2
+```
+
+### Singularity or Apptainer (Linux / HPC)
+
+```bash
+# Run this from the FELIX repository root.
+apptainer pull FELIX_latest.sif docker://lhu1/felix:latest
+# Or: singularity pull FELIX_latest.sif docker://lhu1/felix:latest
+
+cd tutorial
+FELIX_BACKEND=apptainer SIF=../FELIX_latest.sif bash run_example.sh
+# Or: FELIX_BACKEND=singularity SIF=../FELIX_latest.sif bash run_example.sh
+```
+
+### Pixi source install (Linux or macOS)
+
+```bash
+pixi run test                   # from the FELIX repository root
+```
+
+The runner uses the Docker image by default, the source install when FELIX
+commands are already on `PATH` (for example, inside `pixi shell`), and the
+`.sif` image when you select the Singularity/Apptainer backend. It generates
+the simulation inside the selected environment, so container users do not
+need host Python or NumPy.
 
 This produces `tutorial/output/step2_results.tsv` with per-ancestry and joint
 p-values. See [`tutorial/README.md`](tutorial/README.md) for a full, annotated

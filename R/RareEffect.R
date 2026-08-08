@@ -48,7 +48,7 @@ read_matrix_by_one_marker <- function(objGeno, var_list, sampleID) {
     for (i in 1:length(var_list)) {
         t_GVec <- rep(0, n_samples)
         idx <- which(var_list[i] == objGeno$markerInfo$ID)
-        SAIGE::Unified_getOneMarker(t_genoType = objGeno$genoType,
+        Unified_getOneMarker(t_genoType = objGeno$genoType,
             t_gIndex_prev = objGeno$markerInfo$genoIndex_prev[idx],
             t_gIndex = objGeno$markerInfo$genoIndex[idx],
             t_ref = "2",
@@ -394,7 +394,7 @@ run_RareEffect <- function(rdaFile, chrom, geneName, groupFile, traitType, bedFi
     sampleID <- as.character(fam$V2)
     n_samples <- length(sampleID)
 
-    objGeno <- SAIGE::setGenoInput(bgenFile = "",
+    objGeno <- setGenoInput(bgenFile = "",
             bgenFileIndex = "",
             vcfFile = "",
             vcfFileIndex = "",

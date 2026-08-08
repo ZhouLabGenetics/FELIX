@@ -59,7 +59,9 @@ RUN mkdir -p /scripts && \
 ENV FELIXLA_HOME=/scripts
 ENV FELIXLA_RESOURCES=/scripts/resources
 
-ENV PATH=/scripts/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Expose the complete pixi environment (including Python + NumPy) so the
+# tutorial runner can generate its simulated data inside Docker/Singularity.
+ENV PATH=/scripts/bin:/app/.pixi/envs/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RUN mv extdata/step1_fitNULLGLMM.R extdata/step2_SPAtests.R extdata/step3_LDmat.R extdata/createSparseGRM.R /usr/local/bin/ && \
    chmod a+x /usr/local/bin/step1_fitNULLGLMM.R /usr/local/bin/step2_SPAtests.R /usr/local/bin/step3_LDmat.R /usr/local/bin/createSparseGRM.R && \

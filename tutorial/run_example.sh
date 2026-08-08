@@ -2,13 +2,16 @@
 # End-to-end FELIX example on the simulated data: FELIXla pack -> Step 1 -> Step 2.
 # Produces ./output/step2_results.tsv. Run from this tutorial/ directory.
 #
-#   bash run_example.sh          # uses the Docker image (recommended)
-#   pixi run test                # uses a source install, from the repo root
+#   bash run_example.sh                         # uses the Docker image
+#   FELIX_BACKEND=singularity bash run_example.sh # uses FELIX_latest.sif
+#   pixi run test                               # uses a source install, from the repo root
 #
 # The backend is auto-detected: if the FELIX commands are already on PATH (as
 # they are inside `pixi shell` / `pixi run`), they are used directly; otherwise
 # every command is run inside the Docker image. Force one with
-# FELIX_BACKEND=native or FELIX_BACKEND=docker.
+# FELIX_BACKEND=native, docker, singularity, or apptainer. For the latter two,
+# SIF points to the image file (default: FELIX_latest.sif) and CONTAINER_BIN
+# optionally selects the runtime explicitly.
 #
 # Set LA_SOURCE=rfmix to pack from the RFMix .msp.tsv instead of the FLARE VCF.
 # Both produce the same association results.
@@ -21,6 +24,8 @@ set -euo pipefail
 IMAGE="${IMAGE:-lhu1/felix:latest}"
 LA_SOURCE="${LA_SOURCE:-flare}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-}"
+SIF="${SIF:-${SINGULARITY_IMAGE:-FELIX_latest.sif}}"
+CONTAINER_BIN="${CONTAINER_BIN:-}"
 
 if [[ -z "${FELIX_BACKEND:-}" ]]; then
     if command -v felixla >/dev/null 2>&1 && command -v step1_fitNULLGLMM.R >/dev/null 2>&1; then
@@ -45,20 +50,51 @@ case "$FELIX_BACKEND" in
         RUN+=(-v "${PWD}":/work -w /work "${IMAGE}")
         PYTHON="${PYTHON:-python3}"
         ;;
+    singularity|apptainer)
+        if [[ -z "$CONTAINER_BIN" ]]; then
+            if [[ "$FELIX_BACKEND" == "apptainer" ]]; then
+                CONTAINER_BIN=apptainer
+            else
+                CONTAINER_BIN=singularity
+            fi
+        fi
+        if ! command -v "$CONTAINER_BIN" >/dev/null 2>&1; then
+            echo "ERROR: '$CONTAINER_BIN' is not on PATH. Set CONTAINER_BIN to your Singularity/Apptainer command." >&2
+            exit 1
+        fi
+        if [[ ! -f "$SIF" ]]; then
+            echo "ERROR: SIF image not found: $SIF" >&2
+            echo "       Create it with: $CONTAINER_BIN pull $SIF docker://lhu1/felix:latest" >&2
+            exit 1
+        fi
+        echo "== FELIX example ($CONTAINER_BIN image $SIF, local ancestry from: $LA_SOURCE) =="
+        RUN=("$CONTAINER_BIN" exec --bind "${PWD}:/work" --pwd /work "$SIF")
+        PYTHON="${PYTHON:-python3}"
+        ;;
     *)
-        echo "ERROR: FELIX_BACKEND must be 'native' or 'docker' (got '$FELIX_BACKEND')" >&2
+        echo "ERROR: FELIX_BACKEND must be 'native', 'docker', 'singularity', or 'apptainer' (got '$FELIX_BACKEND')" >&2
         exit 1
         ;;
 esac
 
+run() {
+    if [[ ${#RUN[@]} -eq 0 ]]; then
+        "$@"
+    else
+        "${RUN[@]}" "$@"
+    fi
+}
+
 mkdir -p packed output
-[ -f example_inputs/genotypes.phased.vcf ] || "$PYTHON" simulate_example.py
+# Run the simulator through the selected backend too. Docker and SIF users
+# therefore need no host Python packages; the image provides Python + NumPy.
+[ -f example_inputs/genotypes.phased.vcf ] || run "$PYTHON" simulate_example.py
 
 # Step 0 — bgzip + index the phased genotype VCF, then pack it together with
 # the local-ancestry calls into the FELIXla format.
 case "$LA_SOURCE" in
     flare)
-        ${RUN[@]+"${RUN[@]}"} bash -c '
+        run bash -c '
           bgzip -c example_inputs/genotypes.phased.vcf > example_inputs/genotypes.phased.vcf.gz
           bgzip -c example_inputs/localanc.flare.vcf  > example_inputs/localanc.flare.vcf.gz
           tabix -f -p vcf example_inputs/genotypes.phased.vcf.gz
@@ -73,7 +109,7 @@ case "$LA_SOURCE" in
         '
         ;;
     rfmix)
-        ${RUN[@]+"${RUN[@]}"} bash -c '
+        run bash -c '
           bgzip -c example_inputs/genotypes.phased.vcf > example_inputs/genotypes.phased.vcf.gz
           tabix -f -p vcf example_inputs/genotypes.phased.vcf.gz
           felixla \
@@ -92,7 +128,7 @@ case "$LA_SOURCE" in
 esac
 
 # Step 1 — fit the null GLMM (does not use local ancestry).
-${RUN[@]+"${RUN[@]}"} step1_fitNULLGLMM.R \
+run step1_fitNULLGLMM.R \
   --plinkFile=example_inputs/example_grm \
   --phenoFile=example_inputs/phenotype.tsv \
   --phenoCol=Y \
@@ -107,7 +143,7 @@ ${RUN[@]+"${RUN[@]}"} step1_fitNULLGLMM.R \
   --IsOverwriteVarianceRatioFile=TRUE
 
 # Step 2 — ancestry-aware association test on the FELIXla input.
-${RUN[@]+"${RUN[@]}"} step2_SPAtests.R \
+run step2_SPAtests.R \
   --FELIXlaPrefix=packed/example \
   --chrom=chr22 \
   --is_admixed=TRUE \
@@ -119,5 +155,10 @@ ${RUN[@]+"${RUN[@]}"} step2_SPAtests.R \
   --LOCO=FALSE \
   --minMAF=0 \
   --minMAC=1
+
+if [[ ! -s output/step2_results.tsv ]]; then
+    echo "ERROR: Step 2 finished without producing output/step2_results.tsv" >&2
+    exit 1
+fi
 
 echo "Done. Results: output/step2_results.tsv"

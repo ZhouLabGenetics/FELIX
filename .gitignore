@@ -35,3 +35,6 @@ tutorial/output/
 tutorial/packed/
 tutorial/example_inputs/*.vcf.gz
 tutorial/example_inputs/*.vcf.gz.tbi
+
+# Locally pulled Singularity/Apptainer images used by the tutorial.
+*.sif
