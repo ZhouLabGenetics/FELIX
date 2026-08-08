@@ -567,8 +567,11 @@ One row per variant, wide format. The columns are:
 | `BETA_anc{j}` / `SE_anc{j}` | per-ancestry effect estimate and its standard error |
 | `Tstat_anc{j}` / `var_anc{j}` | per-ancestry score statistic and its variance |
 | `p.value_anc{j}` | per-ancestry p-value (SPA-corrected) |
+| `BETA_c_anc{j}` / `SE_c_anc{j}` | per-ancestry effect estimate and its standard error if haplotype was significant thus conditional testing was performed |
+| `Tstat_c_anc{j}` / `var_c_anc{j}` | per-ancestry score statistic and its variance if haplotype was significant thus conditional testing was performed |
+| `p.value_c_anc{j}` | per-ancestry p-value (SPA-corrected) if haplotype was significant thus conditional testing was performed |
 | `N_haplo_anc{j}` | number of haplotypes painted as ancestry `j` at this variant |
-| `Pvalue_haplo_anc{j}` | conditional p-value if the haplotype refit was triggered |
+| `Pvalue_haplo_anc{j}` | haplotype p-value |
 
 For binary traits you also get `AF_case_anc{j}`, `AF_ctrl_anc{j}`, `N_case_anc{j}`, `N_ctrl_anc{j}`, `p.value.NA_anc{j}`, `Is.SPA_anc{j}`.
 
@@ -581,57 +584,6 @@ For binary traits you also get `AF_case_anc{j}`, `AF_ctrl_anc{j}`, `N_case_anc{j
 | `P_cct_admixed` | Cauchy combination of the two — the recommended primary p-value |
 
 Plus `P_het_admixed_c`, `P_hom_admixed_c`, `P_cct_admixed_c`, the conditional versions when haplotype fine-mapping was triggered.
-
-### The worked example
-
-Print the row for the simulated causal variant **v31** (AFR-specific effect ≈1.4). This selects columns by name, so it is robust to column order:
-
-```bash
-awk -F'\t' 'NR==1{for(i=1;i<=NF;i++)h[$i]=i; next}
-$(h["MarkerID"]) ~ /^v31/{
-  printf "%s  BETA_anc1=%s p_anc1=%s | BETA_anc2=%s p_anc2=%s | BETA_anc3=%s p_anc3=%s | P_het=%s P_hom=%s P_cct=%s\n",
-    $(h["MarkerID"]),
-    $(h["BETA_anc1"]), $(h["p.value_anc1"]),
-    $(h["BETA_anc2"]), $(h["p.value_anc2"]),
-    $(h["BETA_anc3"]), $(h["p.value_anc3"]),
-    $(h["P_het_admixed"]), $(h["P_hom_admixed"]), $(h["P_cct_admixed"]) }' output/step2_results.tsv
-```
-
-The simulation is seeded, so you should see essentially these numbers:
-
-```
-v31_G_A
-  BETA_anc1=1.53   p_anc1≈4.5e-13
-  BETA_anc2=-0.17  p_anc2≈0.68
-  BETA_anc3=-1.04  p_anc3≈0.045
-  p_ancALL≈2.5e-07
-  P_het≈2.9e-12    P_hom≈2.5e-07    P_cct≈5.9e-12
-```
-
-Following this page with the **`linux/amd64`** Docker image reproduces
-[`example_outputs/step2_results.tsv`](./example_outputs/step2_results.tsv)
-bit-for-bit (add `--platform linux/amd64` to pin it). A pixi source install may land on Step 1's other solution and
-report `p_anc1≈4.8e-13`, `P_cct≈6.3e-12` instead — same conclusion, ~7% apart
-on the smallest p-value. See the reproducibility note at the end of
-[section 2B](#2b-source-install-with-pixi-linux-and-macos).
-
-How to read it:
-
-- `BETA_anc1` ≈ **1.53** with `p.value_anc1` ≈ **5 × 10⁻¹³** — a strong, highly significant effect on **AFR** haplotypes, recovering the simulated effect (≈1.4).
-- `BETA_anc2` ≈ 0 on **EUR** (`p` ≈ 0.68); `BETA_anc3` on **AMR** is nominal only (`p` ≈ 0.045, not genome-wide significant) — check `N_haplo_anc3` before reading anything into it.
-- `P_het_admixed` (2.9 × 10⁻¹²) is ~5 orders of magnitude stronger than the collapsed `P_hom_admixed` (2.5 × 10⁻⁷), because averaging across ancestries dilutes the AFR-only signal.
-- `P_cct_admixed` (5.9 × 10⁻¹²) is the recommended primary p-value. Across all 52 tested variants it is by far the smallest here — the causal variant is cleanly the top hit; the next best sits at ~3 × 10⁻³.
-
-**Rule of thumb when scanning your own output:**
-
-| if you see … | what it means |
-|---|---|
-| `p.value_anc{j}` small for *one* ancestry only | ancestry-specific signal — report `P_het_admixed` and the per-ancestry `BETA`s |
-| `p.value_anc{j}` small for *all* ancestries, consistent sign | shared signal — report `P_hom_admixed` |
-| `P_cct_admixed` smallest of the three joints | use it as the primary p-value |
-| `Pvalue_haplo_anc{j}` not `NA` | the haplotype refit fired for ancestry `j` — useful for LD-driven cross-ancestry confounding |
-
----
 
 ## 10. Common errors and how to fix them
 
@@ -646,8 +598,8 @@ How to read it:
 | `error: could not resolve ...` during `pixi install` | no network / blocked conda channels | pixi needs `conda-forge` and `bioconda` reachable; set `HTTPS_PROXY` if your site requires one |
 | `WARN the lock file ... uses an older format (v6)` | `pixi.lock` was written by an older pixi than yours | harmless; the lock is still honoured. `pixi lock` rewrites it in the newer format if you prefer |
 | `the prebuilt binary does not run here; falling back to a source build` | no prebuilt binary matches your platform, or it cannot load | nothing to do — this is the intended fallback and the source build follows automatically |
-| p-values differ slightly from `example_outputs/` | CPU-specific OpenBLAS kernels change the floating-point summation order | expected — see the reproducibility note in [2B](#2b-source-install-with-pixi-linux-and-macos); happens with Docker too |
-| `docker: no matching manifest` | your Docker is too old to read a multi-arch manifest, or the arch is not published | add `--platform linux/amd64`, or use the pixi source install |
+| p-values differ slightly from `example_outputs/` | CPU-specific OpenBLAS kernels change the floating-point summation order | expected; happens with Docker too |
+| `docker: no matching manifest` | your Docker may be too old to read a multi-arch manifest, or the arch is not published | add `--platform linux/amd64`, or use the pixi source install |
 
 ### Running FELIX
 
