@@ -73,7 +73,7 @@ from source automatically. See the
 [tutorial's installation section](tutorial/README.md#2-installation) for the
 full walkthrough, including what to do if you have never used pixi.
 
-## Quick start
+## Quick start (if you're using docker)
 
 ```bash
 git clone https://github.com/ZhouLabGenetics/FELIX.git # if you have already downloaded it from pixi installation, no need to re-download
@@ -82,7 +82,7 @@ python3 simulate_example.py     # make a tiny simulated admixed cohort
 bash run_example.sh             # FELIXla pack -> Step 1 -> Step 2
 ```
 
-`run_example.sh` uses the Docker image by default, and the source install
+`run_example.sh` uses the **Docker image** by default, and the source install
 automatically when the FELIX commands are already on `PATH` (i.e. inside
 `pixi shell`). From the repository root, `pixi run test` runs the same example
 against the source install.
