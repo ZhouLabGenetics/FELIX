@@ -60,18 +60,25 @@ curl -fsSL https://pixi.sh/install.sh | sh
 # 2. get FELIX and build it
 git clone https://github.com/ZhouLabGenetics/FELIX.git
 cd FELIX
-pixi run setup          # ~10 min the first time; installs R, htslib, FELIX
+pixi run setup          # downloads the environment; installs prebuilt FELIX
 pixi run check          # verifies every command is present and runnable
 
 # 3. run everything through pixi (or `pixi shell` once, then plain commands)
 pixi run felixla --help
 ```
 
-A prebuilt `felixla` for `linux-64` and `osx-arm64` ships in
-`tools/felixla/prebuilt/`; on any other platform `pixi run setup` compiles it
-from source automatically. See the
-[tutorial's installation section](tutorial/README.md#2-installation) for the
-full walkthrough, including what to do if you have never used pixi.
+Nothing is compiled on your machine: both the `felixla` command
+(`tools/felixla/prebuilt/`) and the FELIX R package (`binaries/`) ship prebuilt
+for `linux-x86_64` and `macos-arm64`, and each is verified to load before being
+accepted. On any other platform `pixi run setup` falls back to compiling from
+source, which needs ≥ 2 GB of RAM.
+
+If your cluster runs an old distro (CentOS/RHEL 7, glibc 2.17), this still
+works — the lock file pins that as the supported floor. If `curl` there is too
+old for modern TLS, the tutorial has a `wget` fallback.
+
+See the [tutorial's installation section](tutorial/README.md#2-installation) for
+the full walkthrough, including what to do if you have never used pixi.
 
 ## Quick start
 
@@ -132,6 +139,8 @@ walkthrough (inputs, each step, and how to read the output).
 - `tools/felixla/` — the FELIXla module: sources for the single `felixla`
   command (packing, RFMix/TRACTOR conversion, export, query, region subsetting),
   its test fixtures, and prebuilt binaries.
+- `binaries/` — the prebuilt FELIX R package, one tarball per platform, so a
+  source install does not have to compile it.
 - `tools/` — the pixi source-install scripts (`install_felix.sh`,
   `check_install.sh`).
 - `extdata/` — the step wrapper scripts.

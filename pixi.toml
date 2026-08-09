@@ -102,3 +102,11 @@ r-rcppnumerical = "*"
 # --- tutorial/simulate_example.py, and the FELIXla test suite ---------------
 python = "*"
 numpy = "*"
+
+# patchelf is used by tools/build_r_binary.sh to make the prebuilt R package
+# relocatable. Tiny, and only needed on Linux.
+[target.linux-64.dependencies]
+patchelf = "*"
+
+[target.linux-aarch64.dependencies]
+patchelf = "*"

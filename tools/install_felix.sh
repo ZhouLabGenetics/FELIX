@@ -39,6 +39,39 @@ wrappers_up_to_date() {
     done
 }
 
+# --- prebuilt R package -----------------------------------------------------
+# binaries/FELIX_<version>_<platform>.tgz is the already-compiled package, built
+# by tools/build_r_binary.sh against this same pixi environment. Its shared
+# object carries a relocatable rpath, so it works from any checkout.
+case "$(uname -s)/$(uname -m)" in
+    Linux/x86_64)              R_PLATFORM=linux-x86_64 ;;
+    Linux/aarch64|Linux/arm64) R_PLATFORM=linux-aarch64 ;;
+    Darwin/arm64)              R_PLATFORM=macos-arm64 ;;
+    Darwin/x86_64)             R_PLATFORM=macos-x86_64 ;;
+    *)                         R_PLATFORM=unknown ;;
+esac
+
+install_prebuilt() {
+    local tgz
+    tgz="$(ls -1 "binaries/FELIX_"*"_${R_PLATFORM}.tgz" 2>/dev/null | head -n1 || true)"
+    [[ -n "$tgz" ]] || return 1
+
+    echo "==> Installing the prebuilt FELIX R package"
+    echo "    $tgz"
+    if ! Rscript -e "install.packages('$tgz', repos = NULL, type = 'source')" >/dev/null 2>&1; then
+        echo "    the prebuilt package would not install here; compiling instead."
+        return 1
+    fi
+    # A binary built against a different R or a different dependency build would
+    # install but fail to load, so prove it loads before accepting it.
+    if ! Rscript -e 'suppressMessages(library(SAIGE))' >/dev/null 2>&1; then
+        echo "    the prebuilt package does not load here; compiling instead."
+        return 1
+    fi
+    echo "    ok (skipped the source build)"
+    return 0
+}
+
 if package_up_to_date; then
     echo "==> FELIX R package is up to date (FELIX_FORCE=1 to rebuild)"
 else
@@ -53,11 +86,20 @@ else
                 }
                 cat("    lintools", as.character(packageVersion("lintools")), "ok\n")'
 
-    # Object files left over from an earlier build (possibly with different
-    # include paths) would be silently reused by R CMD INSTALL.
-    echo "==> Building the FELIX R package"
-    rm -f src/*.o src/*.so
-    R CMD INSTALL --preclean .
+    # Prefer the prebuilt package: it installs in seconds, where compiling from
+    # source takes several minutes and needs >= 2 GB of RAM (which is what kills
+    # the build on cluster login nodes). Set FELIX_FROM_SOURCE=1 to skip it.
+    if [[ "${FELIX_FROM_SOURCE:-0}" != "1" ]] && install_prebuilt; then
+        :
+    else
+        # Object files left over from an earlier build (possibly with different
+        # include paths) would be silently reused by R CMD INSTALL.
+        echo "==> Compiling the FELIX R package from source"
+        echo "    (this needs >= 2 GB of RAM and a few minutes; on a cluster run"
+        echo "     it on a compute node, not the login node)"
+        rm -f src/*.o src/*.so
+        R CMD INSTALL --preclean .
+    fi
 fi
 
 if wrappers_up_to_date; then

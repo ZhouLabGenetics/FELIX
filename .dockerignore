@@ -19,3 +19,6 @@ tools/felixla/example
 tools/felixla/prebuilt
 src/*.o
 src/*.so
+# The image compiles the R package itself; the prebuilt tarballs are for
+# source installs only.
+binaries

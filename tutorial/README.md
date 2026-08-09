@@ -66,7 +66,7 @@ There are two ways to install FELIX. Pick one:
 | | **2A. Docker / Singularity** | **2B. Source install with pixi** |
 |---|---|---|
 | **We recommend** | ✅ **yes — start here** | when Docker is not available |
-| effort | one `docker pull` | one command, ~10–15 min of downloading and compiling |
+| effort | one `docker pull` | one command; a few minutes of downloading, no compiling |
 | requires | Docker Desktop, or Singularity/Apptainer on HPC | nothing but `curl` — pixi brings its own R, compiler and htslib |
 | results | identical software stack everywhere | bit-identical on `linux-64`; ~2–3 significant digits elsewhere (see the note at the end of 2B) |
 | runs on | Linux and macOS natively (amd64 + arm64 image), Windows/WSL2 | Linux and macOS |
@@ -209,38 +209,54 @@ pixi run setup
 
 1. reads `pixi.toml` / `pixi.lock` and downloads the environment into
    `.pixi/envs/default` (1.7–2.2 GB on disk, a few minutes on a good connection);
-2. installs the `felixla` command (see the note on prebuilt binaries below);
+2. installs the `felixla` command from `tools/felixla/prebuilt/`;
 3. installs `lintools` from CRAN (the one R dependency not packaged for conda);
-4. **compiles** the FELIX R package from `src/` — 26 C++ files, a few minutes;
+4. installs the **prebuilt FELIX R package** from `binaries/` — a few seconds;
 5. installs the four step wrappers as ordinary commands in the environment.
 
-The first run takes roughly 10–15 minutes end to end. Later runs are a
-no-op — `pixi run setup` only rebuilds what changed (use `FELIX_FORCE=1 pixi
-run setup` to rebuild regardless).
+The first run is dominated by the download; the FELIX parts take seconds. Later
+runs are a no-op — `pixi run setup` only redoes what changed (use
+`FELIX_FORCE=1 pixi run setup` to force it).
 
-> **Step 4 needs at least 2 GB of RAM.** The prebuilt binaries cover the
-> `felixla` command only; the FELIX R package is always compiled from source,
-> and one file (`SAIGE_fitGLMM_fast.cpp`, ~7,000 lines of Rcpp/Armadillo
-> templates) dominates the cost. Measured on CentOS 7: peak 1.06 GB, and the
-> build succeeds at a 2 GB cap but is killed at 1 GB.
->
-> **On a cluster, do not run this on the login node** — memory limits there are
-> usually well below 2 GB, and the compiler is killed part-way through:
->
-> ```
-> x86_64-conda-linux-gnu-c++: fatal error: Killed signal terminated program cc1plus
-> ```
->
-> Any `Assembler messages: ... unknown pseudo-op` lines just above that are
-> debris from the half-written file, not a separate problem. Get an interactive
-> compute node first, e.g.
->
-> ```bash
-> srun --mem=4G --cpus-per-task=1 --time=1:00:00 --pty bash   # Slurm
-> qrsh -l h_vmem=4G                                           # SGE/UGE
-> ```
->
-> then re-run `pixi run setup`. It picks up cleanly after a failed build.
+<details>
+<summary>What is prebuilt, and what happens if there is no binary for your platform</summary>
+
+Two things ship prebuilt so that nobody has to compile:
+
+| | file |
+|---|---|
+| the `felixla` command | `tools/felixla/prebuilt/<platform>/felixla` |
+| the FELIX R package | `binaries/FELIX_<version>_<platform>.tgz` |
+
+Prebuilt for `linux-x86_64` and `macos-arm64`. Both carry a runtime path
+relative to the file itself, so they work from any checkout, and both are
+verified to load before being accepted.
+
+**If your platform has no binary, or the binary will not load, setup compiles
+from source automatically.** That path needs **≥ 2 GB of RAM** and a few
+minutes — one file (`SAIGE_fitGLMM_fast.cpp`, ~7,000 lines of Rcpp/Armadillo
+templates) dominates it. On a cluster login node, where memory limits are
+usually lower, the compiler is killed part-way through:
+
+```
+x86_64-conda-linux-gnu-c++: fatal error: Killed signal terminated program cc1plus
+```
+
+Any `Assembler messages: ... unknown pseudo-op` lines just above that are debris
+from the half-written file, not a separate problem. If you hit it, get an
+interactive compute node and re-run:
+
+```bash
+srun --mem=4G --cpus-per-task=1 --time=1:00:00 --pty bash   # Slurm
+qrsh -l h_vmem=4G                                           # SGE/UGE
+```
+
+Measured on CentOS 7 (glibc 2.17): installing the prebuilt package takes **4
+seconds and 240 MB**; compiling the same package takes **3m40s and 1.06 GB**,
+and is killed outright at a 1 GB limit.
+
+To force a source build anyway: `FELIX_FROM_SOURCE=1 pixi run setup`.
+</details>
 
 #### Step 3 — verify
 
@@ -635,7 +651,16 @@ Everything else is standard SAIGE Step 2. The result is `output/step2_results.ts
 
 ## 9. Reading the output
 
-One row per variant, wide format. The columns are:
+One row per variant, wide format.
+
+> **Use the `_c_` columns.** For every estimate FELIX reports two versions: a
+> plain one and a `_c_` one. The `_c_` columns are the ones to report. When a
+> variant's per-ancestry haplotype association passes
+> `--pvalcutoff_of_haplotype`, FELIX re-tests it conditional on the haplotype
+> and puts the conditional result in the `_c_` column; when it does not, the
+> `_c_` column carries the unconditional value. So the `_c_` columns are always
+> complete, and always the more appropriate estimate. The columns without `_c_`
+> are the same tests with no conditional analysis applied.
 
 **Fixed columns** — `CHR`, `POS`, `MarkerID`, `Allele1`, `Allele2`.
 
@@ -644,14 +669,13 @@ One row per variant, wide format. The columns are:
 | column | meaning |
 |---|---|
 | `AC_Allele2_anc{j}` / `AF_Allele2_anc{j}` | alt allele count / frequency on ancestry-`j` haplotypes |
-| `BETA_anc{j}` / `SE_anc{j}` | per-ancestry effect estimate and its standard error |
-| `Tstat_anc{j}` / `var_anc{j}` | per-ancestry score statistic and its variance |
-| `p.value_anc{j}` | per-ancestry p-value (SPA-corrected) |
-| `BETA_c_anc{j}` / `SE_c_anc{j}` | per-ancestry effect estimate and its standard error if haplotype was significant thus conditional testing was performed |
-| `Tstat_c_anc{j}` / `var_c_anc{j}` | per-ancestry score statistic and its variance if haplotype was significant thus conditional testing was performed |
-| `p.value_c_anc{j}` | per-ancestry p-value (SPA-corrected) if haplotype was significant thus conditional testing was performed |
+| **`BETA_c_anc{j}` / `SE_c_anc{j}`** | **per-ancestry effect estimate and standard error — report these** |
+| **`p.value_c_anc{j}`** | **per-ancestry p-value (SPA-corrected) — report this** |
+| `Tstat_c_anc{j}` / `var_c_anc{j}` | per-ancestry score statistic and its variance |
+| `BETA_anc{j}` / `SE_anc{j}` / `p.value_anc{j}` | the same quantities with no conditional analysis applied |
+| `Tstat_anc{j}` / `var_anc{j}` | score statistic and variance, unconditional |
 | `N_haplo_anc{j}` | number of haplotypes painted as ancestry `j` at this variant |
-| `Pvalue_haplo_anc{j}` | haplotype p-value |
+| `Pvalue_haplo_anc{j}` | haplotype p-value — what is compared against `--pvalcutoff_of_haplotype` |
 
 For binary traits you also get `AF_case_anc{j}`, `AF_ctrl_anc{j}`, `N_case_anc{j}`, `N_ctrl_anc{j}`, `p.value.NA_anc{j}`, `Is.SPA_anc{j}`.
 
@@ -659,11 +683,10 @@ For binary traits you also get `AF_case_anc{j}`, `AF_ctrl_anc{j}`, `N_case_anc{j
 
 | column | meaning |
 |---|---|
-| `P_het_admixed` | heterogeneity test — captures *ancestry-specific* effects |
-| `P_hom_admixed` | homogeneous (collapsed) test — the standard ancestry-agnostic p-value |
-| `P_cct_admixed` | Cauchy combination of the two — the recommended primary p-value |
-
-Plus `P_het_admixed_c`, `P_hom_admixed_c`, `P_cct_admixed_c`, the conditional versions when haplotype fine-mapping was triggered.
+| **`P_cct_admixed_c`** | **Cauchy combination of the two — the recommended primary p-value** |
+| **`P_het_admixed_c`** | **heterogeneity test — captures *ancestry-specific* effects** |
+| **`P_hom_admixed_c`** | **homogeneous (collapsed) test — the standard ancestry-agnostic p-value** |
+| `P_cct_admixed` / `P_het_admixed` / `P_hom_admixed` | the same three with no conditional analysis applied |
 
 ## 10. Common errors and how to fix them
 
@@ -676,11 +699,12 @@ Plus `P_het_admixed_c`, `P_hom_admixed_c`, `P_cct_admixed_c`, the conditional ve
 | `ERROR: CONDA_PREFIX is not set` from an install script | the script was run directly | run it through pixi: `pixi run setup` |
 | `curl: (35) Peer reports incompatible or unsupported protocol version` installing pixi | your `curl` is too old for modern TLS (CentOS/RHEL 7 ships 7.29 built on NSS) | use the `wget` fallback in [Step 1](#step-1--install-pixi-once-per-machine) |
 | `Virtual package '__glibc >=2.28' does not match ... [__glibc=2.17=0, ...]` | you are on an old distro **and** your `pixi.lock` predates the glibc-2.17 pin | `git pull` to get the current lock. Do **not** set `CONDA_OVERRIDE_GLIBC` — it silences the check instead of fixing it, and installs binaries your machine may not be able to run |
-| `fatal error: Killed signal terminated program cc1plus`, often with `Assembler messages: ... unknown pseudo-op` just above | the compiler was killed by the OOM killer; the assembler errors are debris from the truncated file | the build needs ≥2 GB RAM — move off the login node (`srun --mem=4G --pty bash`) and re-run `pixi run setup` |
+| `fatal error: Killed signal terminated program cc1plus`, often with `Assembler messages: ... unknown pseudo-op` just above | the compiler was killed by the OOM killer; the assembler errors are debris from the truncated file | you should not normally compile at all — check that `binaries/FELIX_*_<your platform>.tgz` exists and that setup says "Installing the prebuilt FELIX R package". If you are on a platform with no binary, the source build needs ≥2 GB RAM: move off the login node (`srun --mem=4G --pty bash`) and re-run |
+| `pixi run setup` sits on `-c SAIGE_fitGLMM_fast.cpp` for a long time | it is compiling from source, and near a memory limit it thrashes rather than failing cleanly | interrupt it; the prebuilt package installs in seconds instead. See the "What is prebuilt" note in [Step 2](#step-2--get-felix-and-build-it) |
 | `pixi run setup` fails while compiling the R package | stale object files from an earlier, differently-configured build | `rm -f src/*.o src/*.so && FELIX_FORCE=1 pixi run setup` |
 | `error: could not resolve ...` during `pixi install` | no network / blocked conda channels | pixi needs `conda-forge` and `bioconda` reachable; set `HTTPS_PROXY` if your site requires one |
 | `expected a string, found table` pointing at `platforms` in `pixi.toml` | your pixi is older than 0.72 and cannot parse the per-platform glibc pin | upgrade pixi: `pixi self-update`, or re-run the installer in [Step 1](#step-1--install-pixi-once-per-machine) |
-| `the prebuilt binary does not run here; falling back to a source build` | no prebuilt binary matches your platform, or it cannot load | nothing to do — this is the intended fallback and the source build follows automatically |
+| `the prebuilt binary does not run here; falling back to a source build`, or `the prebuilt package does not load here; compiling instead` | no prebuilt matches your platform, or it was built against a different environment | nothing to do — this is the intended fallback and the source build follows automatically (see the memory note above) |
 | p-values differ slightly from `example_outputs/` | CPU-specific OpenBLAS kernels change the floating-point summation order | expected; happens with Docker too |
 | `docker: no matching manifest` | your Docker may be too old to read a multi-arch manifest, or the arch is not published | add `--platform linux/amd64`, or use the pixi source install |
 
