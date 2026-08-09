@@ -108,10 +108,10 @@ docker run --rm -v "$PWD":/work -w /work lhu1/felix:latest  <command>
 >
 > ```bash
 > singularity pull FELIX_latest.sif docker://lhu1/felix:latest
-> singularity exec --bind "$PWD":/work --pwd /work FELIX_latest.sif  <command>
+> singularity exec --bind "$PWD":/work --pwd /work FELIX_latest.sif step1_fitNULLGLMM.R --help
 > # Equivalent Apptainer commands:
 > apptainer pull FELIX_latest.sif docker://lhu1/felix:latest
-> apptainer exec --bind "$PWD":/work --pwd /work FELIX_latest.sif  <command>
+> apptainer exec --bind "$PWD":/work --pwd /work FELIX_latest.sif step1_fitNULLGLMM.R --help
 > ```
 
 ### 2B. Source install with pixi (Linux and macOS)
