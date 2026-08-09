@@ -1,7 +1,20 @@
 [workspace]
 channels = ["conda-forge", "bioconda"]
 name = "FELIX"
-platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64"]
+# The Linux entries pin the *oldest* glibc we support. Without this, the lock
+# records whatever glibc floor pixi defaults to (currently 2.28), and
+# `pixi install` refuses to run on older systems -- many HPC clusters are still
+# CentOS/RHEL 7 (glibc 2.17) -- with:
+#   Virtual package '__glibc >=2.28' does not match ... [__glibc=2.17=0, ...]
+# The packages themselves are already glibc-2.17 compatible; this only records
+# the correct floor. Do NOT work around that error with CONDA_OVERRIDE_GLIBC:
+# that silences the check rather than fixing it.
+platforms = [
+    { platform = "linux-64", glibc = "2.17" },
+    { platform = "linux-aarch64", glibc = "2.17" },
+    "osx-64",
+    "osx-arm64",
+]
 version = "0.1.0"
 
 # ---------------------------------------------------------------------------

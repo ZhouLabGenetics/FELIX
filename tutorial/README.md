@@ -150,8 +150,37 @@ your `PATH` in your shell startup file. **Close and reopen your terminal**
 
 ```bash
 pixi --version
-# pixi 0.76.1   (anything from 0.60 onwards works)
+# pixi 0.76.1   (0.72 or newer is required; the installer above gives you a current one)
 ```
+
+<details>
+<summary>If curl fails with <code>(35) Peer reports incompatible or unsupported protocol version</code></summary>
+
+Your `curl` is too old to negotiate modern TLS — common on CentOS/RHEL 7 login
+nodes, where `curl 7.29` is built against NSS. Download the release with `wget`
+instead. This picks the right build for your machine:
+
+```bash
+case "$(uname -s)/$(uname -m)" in
+    Linux/x86_64)              ASSET=pixi-x86_64-unknown-linux-musl.tar.gz ;;
+    Linux/aarch64|Linux/arm64) ASSET=pixi-aarch64-unknown-linux-musl.tar.gz ;;
+    Darwin/arm64)              ASSET=pixi-aarch64-apple-darwin.tar.gz ;;
+    Darwin/x86_64)             ASSET=pixi-x86_64-apple-darwin.tar.gz ;;
+esac
+mkdir -p ~/.local/bin
+wget -qO- "https://github.com/prefix-dev/pixi/releases/latest/download/$ASSET" \
+    | tar -xz -C ~/.local/bin pixi
+chmod +x ~/.local/bin/pixi
+export PATH="$HOME/.local/bin:$PATH"
+pixi --version
+```
+
+Then make it permanent:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+```
+</details>
 
 <details>
 <summary>If <code>pixi: command not found</code> after reopening the terminal</summary>
@@ -182,12 +211,36 @@ pixi run setup
    `.pixi/envs/default` (1.7–2.2 GB on disk, a few minutes on a good connection);
 2. installs the `felixla` command (see the note on prebuilt binaries below);
 3. installs `lintools` from CRAN (the one R dependency not packaged for conda);
-4. compiles and installs the FELIX R package (~1–2 minutes);
+4. **compiles** the FELIX R package from `src/` — 26 C++ files, a few minutes;
 5. installs the four step wrappers as ordinary commands in the environment.
 
 The first run takes roughly 10–15 minutes end to end. Later runs are a
 no-op — `pixi run setup` only rebuilds what changed (use `FELIX_FORCE=1 pixi
 run setup` to rebuild regardless).
+
+> **Step 4 needs at least 2 GB of RAM.** The prebuilt binaries cover the
+> `felixla` command only; the FELIX R package is always compiled from source,
+> and one file (`SAIGE_fitGLMM_fast.cpp`, ~7,000 lines of Rcpp/Armadillo
+> templates) dominates the cost. Measured on CentOS 7: peak 1.06 GB, and the
+> build succeeds at a 2 GB cap but is killed at 1 GB.
+>
+> **On a cluster, do not run this on the login node** — memory limits there are
+> usually well below 2 GB, and the compiler is killed part-way through:
+>
+> ```
+> x86_64-conda-linux-gnu-c++: fatal error: Killed signal terminated program cc1plus
+> ```
+>
+> Any `Assembler messages: ... unknown pseudo-op` lines just above that are
+> debris from the half-written file, not a separate problem. Get an interactive
+> compute node first, e.g.
+>
+> ```bash
+> srun --mem=4G --cpus-per-task=1 --time=1:00:00 --pty bash   # Slurm
+> qrsh -l h_vmem=4G                                           # SGE/UGE
+> ```
+>
+> then re-run `pixi run setup`. It picks up cleanly after a failed build.
 
 #### Step 3 — verify
 
@@ -621,9 +674,12 @@ Plus `P_het_admixed_c`, `P_hom_admixed_c`, `P_cct_admixed_c`, the conditional ve
 | `pixi: command not found` right after installing pixi | the installer edited a startup file the current shell has not read | close and reopen the terminal, or `export PATH="$HOME/.pixi/bin:$PATH"` |
 | `step2_SPAtests.R: command not found` after `pixi run setup` | you are outside the environment | prefix with `pixi run`, or enter it once with `pixi shell` |
 | `ERROR: CONDA_PREFIX is not set` from an install script | the script was run directly | run it through pixi: `pixi run setup` |
+| `curl: (35) Peer reports incompatible or unsupported protocol version` installing pixi | your `curl` is too old for modern TLS (CentOS/RHEL 7 ships 7.29 built on NSS) | use the `wget` fallback in [Step 1](#step-1--install-pixi-once-per-machine) |
+| `Virtual package '__glibc >=2.28' does not match ... [__glibc=2.17=0, ...]` | you are on an old distro **and** your `pixi.lock` predates the glibc-2.17 pin | `git pull` to get the current lock. Do **not** set `CONDA_OVERRIDE_GLIBC` — it silences the check instead of fixing it, and installs binaries your machine may not be able to run |
+| `fatal error: Killed signal terminated program cc1plus`, often with `Assembler messages: ... unknown pseudo-op` just above | the compiler was killed by the OOM killer; the assembler errors are debris from the truncated file | the build needs ≥2 GB RAM — move off the login node (`srun --mem=4G --pty bash`) and re-run `pixi run setup` |
 | `pixi run setup` fails while compiling the R package | stale object files from an earlier, differently-configured build | `rm -f src/*.o src/*.so && FELIX_FORCE=1 pixi run setup` |
 | `error: could not resolve ...` during `pixi install` | no network / blocked conda channels | pixi needs `conda-forge` and `bioconda` reachable; set `HTTPS_PROXY` if your site requires one |
-| `WARN the lock file ... uses an older format (v6)` | `pixi.lock` was written by an older pixi than yours | harmless; the lock is still honoured. `pixi lock` rewrites it in the newer format if you prefer |
+| `expected a string, found table` pointing at `platforms` in `pixi.toml` | your pixi is older than 0.72 and cannot parse the per-platform glibc pin | upgrade pixi: `pixi self-update`, or re-run the installer in [Step 1](#step-1--install-pixi-once-per-machine) |
 | `the prebuilt binary does not run here; falling back to a source build` | no prebuilt binary matches your platform, or it cannot load | nothing to do — this is the intended fallback and the source build follows automatically |
 | p-values differ slightly from `example_outputs/` | CPU-specific OpenBLAS kernels change the floating-point summation order | expected; happens with Docker too |
 | `docker: no matching manifest` | your Docker may be too old to read a multi-arch manifest, or the arch is not published | add `--platform linux/amd64`, or use the pixi source install |
