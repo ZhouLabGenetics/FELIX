@@ -68,7 +68,12 @@ case "$FELIX_BACKEND" in
             exit 1
         fi
         echo "== FELIX example ($CONTAINER_BIN image $SIF, local ancestry from: $LA_SOURCE) =="
-        RUN=("$CONTAINER_BIN" exec --bind "${PWD}:/work" --pwd /work "$SIF")
+        # --cleanenv: Singularity/Apptainer pass the whole host environment into
+        # the container by default. On a cluster that means $TMPDIR pointing at a
+        # job scratch directory that is not bind-mounted inside, plus whatever
+        # LD_LIBRARY_PATH / R_LIBS / PYTHONPATH the module system exported. The
+        # image is self-contained, so start from a clean slate.
+        RUN=("$CONTAINER_BIN" exec --cleanenv --bind "${PWD}:/work" --pwd /work "$SIF")
         PYTHON="${PYTHON:-python3}"
         ;;
     *)

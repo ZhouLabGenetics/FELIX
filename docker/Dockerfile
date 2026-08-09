@@ -59,12 +59,29 @@ RUN mkdir -p /scripts && \
 ENV FELIXLA_HOME=/scripts
 ENV FELIXLA_RESOURCES=/scripts/resources
 
+# Keep R hermetic without pixi activation. Under Apptainer/Singularity the
+# host's $HOME is bind-mounted, so without this R would prepend the user's
+# personal library (~/R/<arch>/<ver>) built against a different R.
+ENV R_LIBS_USER=/app/.pixi/envs/default/lib/R/library
+
 # Expose the complete pixi environment (including Python + NumPy) so the
 # tutorial runner can generate its simulated data inside Docker/Singularity.
 ENV PATH=/scripts/bin:/app/.pixi/envs/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN mv extdata/step1_fitNULLGLMM.R extdata/step2_SPAtests.R extdata/step3_LDmat.R extdata/createSparseGRM.R /usr/local/bin/ && \
-   chmod a+x /usr/local/bin/step1_fitNULLGLMM.R /usr/local/bin/step2_SPAtests.R /usr/local/bin/step3_LDmat.R /usr/local/bin/createSparseGRM.R && \
+# The copies in extdata/ carry a `pixi run` shebang, which would make every
+# step invocation start pixi, re-activate the environment and write a temp file
+# into $TMPDIR. That breaks under Apptainer/Singularity: the container root is
+# read-only and the host's $TMPDIR (a job scratch directory) is not bind-mounted
+# inside, so activation dies with
+#   failed to activate environment ... PathError { path: ".../.tmpXXXXXX" }
+# pixi is only needed to *build* this image. At run time the environment's bin
+# directory is already on PATH, so the wrappers call Rscript directly and the
+# container needs nothing from pixi.
+RUN for s in step1_fitNULLGLMM.R step2_SPAtests.R step3_LDmat.R createSparseGRM.R; do \
+       { echo '#!/usr/bin/env Rscript'; tail -n +2 "extdata/$s"; } > "/usr/local/bin/$s"; \
+       chmod a+x "/usr/local/bin/$s"; \
+       rm -f "extdata/$s"; \
+   done && \
    createSparseGRM.R --help && \
    step1_fitNULLGLMM.R --help && \
    step2_SPAtests.R --help && \

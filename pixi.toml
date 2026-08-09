@@ -9,9 +9,16 @@ name = "FELIX"
 # The packages themselves are already glibc-2.17 compatible; this only records
 # the correct floor. Do NOT work around that error with CONDA_OVERRIDE_GLIBC:
 # that silences the check rather than fixing it.
+#
+# `linux` pins the kernel floor for the same reason: pixi otherwise assumes
+# 4.18, and a CentOS 7 kernel (3.10) triggers
+#   WARN Environment 'default' requires linux >=4.18, but this machine only
+#        provides '__linux 3.10.0'
+# which is harmless today but would let a future re-resolve pull packages that
+# genuinely do not run there.
 platforms = [
-    { platform = "linux-64", glibc = "2.17" },
-    { platform = "linux-aarch64", glibc = "2.17" },
+    { platform = "linux-64", glibc = "2.17", linux = "3.10" },
+    { platform = "linux-aarch64", glibc = "2.17", linux = "3.10" },
     "osx-64",
     "osx-arm64",
 ]
