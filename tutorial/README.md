@@ -92,15 +92,8 @@ docker pull lhu1/felix:latest
 To run any command in the container against your current directory, prefix it with:
 
 ```bash
-docker run --rm -v "$PWD":/work -w /work lhu1/felix:latest  <command>
+docker run --rm -v "$PWD":/work -w /work lhu1/felix:latest step1_fitNULLGLMM.R --help
 ```
-
-> **Pinning the architecture.** Add `--platform linux/amd64` to `docker pull`
-> and `docker run` to force the amd64 build everywhere — on Apple Silicon it
-> then runs under emulation (slower, but it is the build the reference output
-> in `example_outputs/` was generated with). Use it when you want every
-> collaborator on a project to get the same last digits; otherwise leave it off
-> and get the native build.
 
 > **HPC / Singularity / Apptainer.** If you cannot use Docker, convert the same
 > image to a `.sif` once and substitute `singularity exec` (or `apptainer exec`)
