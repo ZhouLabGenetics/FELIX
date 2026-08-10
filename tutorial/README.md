@@ -49,11 +49,10 @@ It has two components:
 
 For every variant and every ancestry `j` (e.g. AFR / EUR / AMR) it reports:
 
-- the per-ancestry effect `BETA_anc{j}` and `p.value_anc{j}` (does this variant
-  matter *on AFR haplotypes*, *on EUR haplotypes*, …?),
-- a shared `p.value_ancALL` (the standard, ancestry-collapsed signal), and
-- a joint `P_cct_admixed` that combines the two via a Cauchy combination —
-  robust to whichever regime dominates a locus.
+- the per-ancestry effect estimates, and heterogeneity test effects capturing ancestry-specific signals
+- the shared-effect effect estimates (the standard-GWAS-like, ancestry-collapsed signal), and
+- a joint `P_cct_admixed_c` that combines the het and hom results via a Cauchy combination —
+  robust to whichever regime better describes a locus.
 
 You run the test once per cohort to get all of these.
 
@@ -63,18 +62,17 @@ You run the test once per cohort to get all of these.
 
 There are two ways to install FELIX. Pick one:
 
-| | **2A. Docker / Singularity** | **2B. Source install with pixi** |
+| | **2A. Docker / Singularity** | **2B. Install with pixi** |
 |---|---|---|
 | **We recommend** | ✅ **yes — start here** | when Docker is not available |
 | effort | one `docker pull` | one command; a few minutes of downloading, no compiling |
 | requires | Docker Desktop, or Singularity/Apptainer on HPC | nothing but `curl` — pixi brings its own R, compiler and htslib |
-| results | identical software stack everywhere | bit-identical on `linux-64`; ~2–3 significant digits elsewhere (see the note at the end of 2B) |
+| results | identical software stack everywhere | bit-identical on `linux-64`; ~2–3 significant digits elsewhere|
 | runs on | Linux and macOS natively (amd64 + arm64 image), Windows/WSL2 | Linux and macOS |
 
 Both give you the same four things: the FELIX R package, the FELIXla
 command `felixla`, the step wrappers
-(`step1_fitNULLGLMM.R`, `step2_SPAtests.R`, `step3_LDmat.R`,
-`createSparseGRM.R`), and `bgzip`/`tabix`.
+(`step1_fitNULLGLMM.R`, `step2_SPAtests.R`, `createSparseGRM.R`), and `bgzip`/`tabix`.
 
 ---
 
@@ -120,7 +118,7 @@ that reads a list of dependencies (`pixi.toml` in the FELIX repository) and
 downloads exactly those packages — R, the R libraries, a C++ compiler, htslib,
 Python — into a private folder inside the FELIX checkout (`.pixi/`).
 
-Three things this buys you:
+Three advantages:
 
 - **You do not need to install anything else first.** No conda, no R, no
   compiler, no `sudo`. If you can run `curl`, you can install FELIX.
@@ -227,9 +225,8 @@ verified to load before being accepted.
 
 **If your platform has no binary, or the binary will not load, setup compiles
 from source automatically.** That path needs **≥ 2 GB of RAM** and a few
-minutes — one file (`SAIGE_fitGLMM_fast.cpp`, ~7,000 lines of Rcpp/Armadillo
-templates) dominates it. On a cluster login node, where memory limits are
-usually lower, the compiler is killed part-way through:
+minutes. On a cluster login node, where memory limits are usually lower, 
+the compiler is killed part-way through:
 
 ```
 x86_64-conda-linux-gnu-c++: fatal error: Killed signal terminated program cc1plus
