@@ -14,22 +14,21 @@ It has two components:
   imbalance (built on the SAIGE mixed-model core).
 
 > **📘 Start with the [step-by-step tutorial](tutorial/README.md)** — a
-> runnable end-to-end example (install → pack → Step 1 → Step 2 → reading the
-> output) on a tiny simulated cohort.
+> runnable end-to-end example (install → packed genotype → Step 1 → Step 2 →
+> reading the output) on a tiny simulated cohort.
 
 ## Why FELIX
 
-- Retains admixed and unassigned participants that discrete-ancestry GWAS drops.
-- Estimates per-ancestry effects *and* the shared effect from a single run.
-- Scales to biobank cohorts via a sparse GRM + variance-ratio approximation.
-- Calibrated under severe case/control imbalance (saddlepoint approximation).
+- Retains admixed participants that discrete-global-ancestry GWAS drops.
+- Estimates both per-local-ancestry effects and the shared effect from a single run.
+- Scales to biobank cohorts.
+- Calibrated under severe case/control imbalance.
 
 ## Install
 
 Two supported ways. **Docker is recommended** — it is one command and pins the
-whole software stack. The source install exists for machines where Docker is
-unavailable (many HPC login nodes) or unwanted, and works on both Linux and
-macOS.
+whole software stack. Pixi installation exists for machines where Docker is
+unavailable or unwanted, and works on both Linux and macOS.
 
 ### Option A — Docker (recommended)
 
@@ -38,8 +37,7 @@ docker pull lhu1/felix:latest
 ```
 
 The image is multi-architecture, so this gives a native build on `linux/amd64`
-(servers, HPC, Intel Macs) and on `linux/arm64` (Apple Silicon). Add
-`--platform linux/amd64` to pin the architecture.
+and on `linux/arm64`. Add `--platform linux/amd64` to pin the architecture.
 
 On HPC, convert it once to a Singularity/Apptainer image:
 
