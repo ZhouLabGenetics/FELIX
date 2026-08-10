@@ -14,7 +14,7 @@ It has two components:
   imbalance (built on the SAIGE mixed-model core).
 
 > **📘 Start with the [step-by-step tutorial](tutorial/README.md)** — a
-> runnable end-to-end example (install → packed genotype → Step 1 → Step 2 →
+> runnable end-to-end example (install → pack genotype → Step 1 → Step 2 →
 > reading the output) on a tiny simulated cohort.
 
 ## Why FELIX
@@ -149,5 +149,3 @@ walkthrough (inputs, each step, and how to read the output).
 ## Citation
 
 FELIX — Hu, L. et al. (in submission).
-
-Questions or bugs: open an issue at <https://github.com/ZhouLabGenetics/FELIX/issues>.
